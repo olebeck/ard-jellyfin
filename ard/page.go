@@ -309,6 +309,5 @@ func (p *Page) Image() string {
 	src := p.Widgets[0].Image.Src
 	sp := strings.Split(src, "?")
 	v, _ := url.ParseQuery(sp[1])
-
 	return sp[0] + "?ch=" + v.Get("ch") + "&w=1920"
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/xml"
 	"flag"
 	"fmt"
 	"log"
@@ -11,41 +10,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/olebeck/ard-jellyfin/ard"
+	"github.com/olebeck/ard-jellyfin/xmltv"
 )
-
-func writeXmlTv(output string, program *ard.ArdProgram, channelPages map[string]*ard.Page) error {
-	tv, err := Ard2XmlTV(program, channelPages)
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(path.Join(output, "ard.xml"))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	e := xml.NewEncoder(f)
-	e.Indent("", "  ")
-	return e.Encode(tv)
-}
-
-func writeM3U8(output string, program *ard.ArdProgram, channelPages map[string]*ard.Page) error {
-	channels, err := Ard2M3U8(program, channelPages)
-	if err != nil {
-		return err
-	}
-
-	f, err := os.Create(path.Join(output, "ard.m3u8"))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err = channels.WriteTo(f); err != nil {
-		return err
-	}
-	return nil
-}
 
 func main() {
 	output := flag.String("output", "output", "the output folder")
@@ -87,26 +53,32 @@ func main() {
 
 func run(output string) error {
 	fmt.Printf("Running at %s\n", time.Now().Truncate(time.Second))
-	program, err := ard.GetProgram(time.Now())
-	if err != nil {
-		return fmt.Errorf("ard.GetProgram: %w", err)
+
+	tvOut := &XmlTvOutput{
+		tv: xmltv.TV{
+			SourceInfoName:    "ard-jellyfin",
+			GeneratorInfoName: "ard-jellyfin",
+		},
+		channelMap: make(map[string]struct{}),
+	}
+	m3u8 := &M3U8Channels{
+		channelMap: make(map[string]struct{}),
 	}
 
-	var channelPages = make(map[string]*ard.Page)
-	for _, ch := range program.Channels {
-		page, err := ard.GetChannelPage(ch)
-		if err != nil {
-			return fmt.Errorf("ard.GetChannelPage: %w", err)
-		}
-		channelPages[ch.ID] = page
+	if err := addArd(tvOut, m3u8); err != nil {
+		return fmt.Errorf("addArd: %w", err)
 	}
 
-	if err = writeXmlTv(output, program, channelPages); err != nil {
-		return fmt.Errorf("writeXmlTv: %w", err)
+	if err := addZdf(tvOut, m3u8); err != nil {
+		return fmt.Errorf("addZdf: %w", err)
 	}
 
-	if err := writeM3U8(output, program, channelPages); err != nil {
-		return fmt.Errorf("writeM3U8: %w", err)
+	if err := tvOut.Create(path.Join(output, "ard.xml")); err != nil {
+		return fmt.Errorf("tvOut.Create: %w", err)
+	}
+
+	if err := m3u8.Create(path.Join(output, "ard.m3u8")); err != nil {
+		return fmt.Errorf("m3u8.Create: %w", err)
 	}
 	return nil
 }

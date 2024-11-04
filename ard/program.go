@@ -1,6 +1,10 @@
 package ard
 
-import "time"
+import (
+	"net/url"
+	"strings"
+	"time"
+)
 
 type Links struct {
 	Self struct {
@@ -25,7 +29,7 @@ type Image struct {
 }
 
 type Images struct {
-	Aspect16X9 Image
+	Aspect16X9 Image `json:"aspect16x9"`
 }
 
 type ChannelReference struct {
@@ -66,6 +70,16 @@ type ChannelTimeSlot struct {
 	NumericID             string                `json:"numericId"`
 	Subline               string                `json:"subline,omitempty"`
 	Synopsis              string                `json:"synopsis"`
+}
+
+func (c *ChannelTimeSlot) Image() string {
+	if c.Images == nil {
+		return ""
+	}
+	src := c.Images.Aspect16X9.Src
+	sp := strings.Split(src, "?")
+	v, _ := url.ParseQuery(sp[1])
+	return sp[0] + "?ch=" + v.Get("ch") + "&w=1920"
 }
 
 type PublicationService struct {

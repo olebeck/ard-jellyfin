@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 )
 
 type M3U8Channel struct {
@@ -13,35 +14,44 @@ type M3U8Channel struct {
 }
 
 func (m *M3U8Channel) WriteTo(w io.Writer) (int64, error) {
-	nn := 0
-	n, _ := fmt.Fprintf(w, "#EXTINF:-1,")
-	nn += n
-	n, _ = fmt.Fprintf(w, "tvg-id=\"%s\",", m.ID)
-	nn += n
-	n, _ = fmt.Fprintf(w, "tvg-epgid=\"%s\",", m.ID)
-	nn += n
-	n, _ = fmt.Fprintf(w, "tvg-name=\"%s\",", m.Name)
-	nn += n
-	n, _ = fmt.Fprintf(w, "tvg-logo=\"%s\"", m.Image)
-	nn += n
-	n, _ = fmt.Fprintf(w, "\n%s\n", m.PlaylistURL)
-	nn += n
-	return int64(nn), nil
+	fmt.Fprintf(w, `#EXTINF:-1,tvg-id="%s",tvg-name="%s",tvg-logo="%s"`, m.ID, m.Name, m.Image)
+	w.Write([]byte{'\n'})
+	io.WriteString(w, m.PlaylistURL)
+	w.Write([]byte{'\n', '\n'})
+	return 0, nil
 }
 
 type M3U8Channels struct {
-	Channels []M3U8Channel
+	Channels   []M3U8Channel
+	channelMap map[string]struct{}
+}
+
+func (m *M3U8Channels) AddChannel(channel M3U8Channel) {
+	if _, ok := m.channelMap[channel.ID]; ok {
+		return
+	}
+	m.channelMap[channel.ID] = struct{}{}
+	m.Channels = append(m.Channels, channel)
 }
 
 func (m *M3U8Channels) WriteTo(w io.Writer) (int64, error) {
-	nn := 0
-	n, _ := io.WriteString(w, "#EXTM3U\n")
-	nn += n
-	n, _ = io.WriteString(w, "#EXT-X-VERSION:3\n")
-	nn += n
+	io.WriteString(w, "#EXTM3U\n")
+	io.WriteString(w, "#EXT-X-VERSION:3\n")
 	for _, channel := range m.Channels {
-		n, _ := channel.WriteTo(w)
-		nn += int(n)
+		channel.WriteTo(w)
 	}
-	return int64(nn), nil
+	return 0, nil
+}
+
+func (m *M3U8Channels) Create(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err = m.WriteTo(f); err != nil {
+		return err
+	}
+	return nil
 }

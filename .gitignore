@@ -1,2 +1,3 @@
 bin/örr-jellyfin
 output/
+__debug_bin*
