@@ -43,7 +43,7 @@ func (x *XmlTvOutput) AddProgramme(channelID, title, desc, subline string, start
 		Titles:       []xmltv.Title{{Value: title}},
 		Descriptions: []xmltv.Description{{Value: desc}},
 		Subtitles:    []xmltv.Subtitle{{Value: subline}},
-		Start:        xmltv.XMLTVTime{Time: end},
+		Start:        xmltv.XMLTVTime{Time: start},
 		Stop:         xmltv.XMLTVTime{Time: end},
 		Live:         &struct{}{},
 		Icon:         xmltv.Icon{Src: icon},
