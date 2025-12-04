@@ -27,7 +27,7 @@ type DisplayName struct {
 }
 
 type Icon struct {
-	Src    string `xml:"src,attr"`
+	Src    string `xml:"src,attr,omitempty"`
 	Width  string `xml:"width,attr,omitempty"`
 	Height string `xml:"height,attr,omitempty"`
 }

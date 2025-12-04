@@ -26,6 +26,11 @@ type M3U8Channels struct {
 	channelMap map[string]struct{}
 }
 
+func (m *M3U8Channels) HaveChannel(id string) bool {
+	_, ok := m.channelMap[id]
+	return ok
+}
+
 func (m *M3U8Channels) AddChannel(channel M3U8Channel) {
 	if _, ok := m.channelMap[channel.ID]; ok {
 		return

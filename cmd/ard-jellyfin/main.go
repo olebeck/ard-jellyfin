@@ -4,46 +4,81 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
+	"strconv"
 	"time"
-
-	"github.com/olebeck/ard-jellyfin/xmltv"
 )
 
-func main() {
-	output := flag.String("output", "output", "the output folder")
-	listen := flag.String("listen", "", "address to listen with an http server on, if you dont want to serve the files using an external server/directly pass the paths to jellyfin")
-	timerSeconds := flag.Int("timer", 3600, "how long to wait between updates in seconds, 0 if you want it to only run once")
+type Args struct {
+	Output string
+	Listen string
+	Debug  bool
+	Timer  int
+}
+
+func parseArgs() (*Args, error) {
+	var args Args
+	args.Output, _ = os.LookupEnv("OUTPUT_DIR")
+	args.Listen, _ = os.LookupEnv("LISTEN")
+	_, args.Debug = os.LookupEnv("DEBUG")
+	if timer, ok := os.LookupEnv("TIMER"); ok {
+		timerI, err := strconv.ParseInt(timer, 0, 32)
+		if err != nil {
+			return nil, err
+		}
+		args.Timer = int(timerI)
+	}
+
+	flag.StringVar(&args.Output, "output", "output", "the output folder")
+	flag.StringVar(&args.Listen, "listen", "", "address to listen with an http server on, if you dont want to serve the files using an external server/directly pass the paths to jellyfin")
+	flag.BoolVar(&args.Debug, "debug", false, "enable debug logs")
+	flag.IntVar(&args.Timer, "timer", 3600, "how long to wait between updates in seconds, 0 if you want it to only run once")
 	flag.Parse()
+	return &args, nil
+}
 
-	fmt.Printf("output folder: %s\n", *output)
+func main() {
+	args, err := parseArgs()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if args.Debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 
-	if *listen != "" {
-		ln, err := net.Listen("tcp", *listen)
+	absOutput, err := filepath.Abs(args.Output)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("output folder: %s\n", absOutput)
+
+	if args.Listen != "" {
+		ln, err := net.Listen("tcp", args.Listen)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("http Listening on: %s\n", ln.Addr())
-		go http.Serve(ln, http.FileServer(http.FS(os.DirFS(*output))))
+		go http.Serve(ln, http.FileServer(http.FS(os.DirFS(args.Output))))
 	}
 
-	os.Mkdir(*output, 0777)
+	os.Mkdir(args.Output, 0777)
 
-	timerValue := *timerSeconds
-	timerDuration := time.Duration(max(timerValue, 1)) * time.Second
+	timerDuration := time.Duration(max(args.Timer, 10)) * time.Second
 	t := time.NewTicker(timerDuration)
 	for {
-		err := run(*output)
+		err := run(args.Output)
 		if err != nil {
 			log.Printf("Error: %s\n", err)
-			if timerValue == 0 {
+			if args.Timer == 0 {
 				os.Exit(1)
 			}
 		}
-		if timerValue == 0 {
+		if args.Timer == 0 {
 			break
 		}
 		fmt.Printf("Waiting %s\n", timerDuration)
@@ -54,27 +89,21 @@ func main() {
 func run(output string) error {
 	fmt.Printf("Running at %s\n", time.Now().Truncate(time.Second))
 
-	tvOut := &XmlTvOutput{
-		tv: xmltv.TV{
-			SourceInfoName:    "ard-jellyfin",
-			GeneratorInfoName: "ard-jellyfin",
-		},
-		channelMap: make(map[string]struct{}),
-	}
+	epg := NewXmlTvOutput()
 	m3u8 := &M3U8Channels{
 		channelMap: make(map[string]struct{}),
 	}
 
-	if err := addArd(tvOut, m3u8); err != nil {
+	if err := addArd(epg, m3u8); err != nil {
 		return fmt.Errorf("addArd: %w", err)
 	}
 
-	if err := addZdf(tvOut, m3u8); err != nil {
+	if err := addZdf(epg, m3u8); err != nil {
 		return fmt.Errorf("addZdf: %w", err)
 	}
 
-	if err := tvOut.Create(path.Join(output, "ard.xml")); err != nil {
-		return fmt.Errorf("tvOut.Create: %w", err)
+	if err := epg.Create(path.Join(output, "ard.xml")); err != nil {
+		return fmt.Errorf("epg.Create: %w", err)
 	}
 
 	if err := m3u8.Create(path.Join(output, "ard.m3u8")); err != nil {
