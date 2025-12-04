@@ -32,7 +32,7 @@ func addZdf(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 	now := time.Now().Add(-12 * time.Hour)
 	skipPhoenix := m3u8.HaveChannel("phoenix")
 	skipKika := m3u8.HaveChannel("kika")
-	for day := range 2 {
+	for day := -1; day < 7; day++ {
 		start := now.Add(time.Duration(day) * 24 * time.Hour)
 		epgs, err := zdf.GetEpg(appToken, start, start.Add(24*time.Hour))
 		if err != nil {
@@ -54,10 +54,12 @@ func addZdf(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 				channelTitles[epgEntry.Broadcaster.ID] = epgEntry.Broadcaster.Title
 			}
 			for _, broadcast := range epgEntry.Broadcasts {
+				desc := broadcast.Text
+				desc = strings.ReplaceAll(desc, "<br/>", "\n")
 				epg.AddProgramme(
 					epgEntry.Broadcaster.ID,
 					broadcast.Title,
-					broadcast.Text,
+					desc,
 					broadcast.Subheadline,
 					broadcast.AirtimeBegin,
 					broadcast.AirtimeEnd,
