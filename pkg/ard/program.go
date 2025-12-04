@@ -1,8 +1,6 @@
 package ard
 
 import (
-	"net/url"
-	"strings"
 	"time"
 )
 
@@ -76,10 +74,7 @@ func (c *ChannelTimeSlot) Image() string {
 	if c.Images == nil {
 		return ""
 	}
-	src := c.Images.Aspect16X9.Src
-	sp := strings.Split(src, "?")
-	v, _ := url.ParseQuery(sp[1])
-	return sp[0] + "?ch=" + v.Get("ch") + "&w=1920"
+	return imageServiceUrl(c.Images.Aspect16X9.Src)
 }
 
 type PublicationService struct {

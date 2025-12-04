@@ -2,7 +2,6 @@ package ard
 
 import (
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -305,9 +304,17 @@ func (p *Page) PlaylistURL() string {
 	return p.Widgets[0].MediaCollection.Embedded.Streams[0].Media[0].URL
 }
 
+func imageServiceUrl(src string) string {
+	imageUrl, err := url.Parse(src)
+	if err == nil {
+		query := make(url.Values)
+		query.Set("w", "1920")
+		imageUrl.RawQuery = query.Encode()
+		return imageUrl.String()
+	}
+	return src
+}
+
 func (p *Page) Image() string {
-	src := p.Widgets[0].Image.Src
-	sp := strings.Split(src, "?")
-	v, _ := url.ParseQuery(sp[1])
-	return sp[0] + "?ch=" + v.Get("ch") + "&w=1920"
+	return imageServiceUrl(p.Widgets[0].Image.Src)
 }

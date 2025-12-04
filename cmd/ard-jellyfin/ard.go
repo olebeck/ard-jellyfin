@@ -2,22 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/olebeck/ard-jellyfin/pkg/ard"
 )
-
-func imageServiceUrl(imageUrl string) string {
-	imageUrl_, err := url.Parse(imageUrl)
-	if err == nil {
-		query := make(url.Values)
-		query.Set("w", "1920")
-		imageUrl_.RawQuery = query.Encode()
-		imageUrl = imageUrl_.String()
-	}
-	return imageUrl
-}
 
 func addArd(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 
@@ -29,7 +17,7 @@ func addArd(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 	m3u8.AddChannel(M3U8Channel{
 		ID:          "deutsche-welle",
 		Name:        "Deutsche Welle (DW)",
-		Image:       imageServiceUrl(dwPage.Image()),
+		Image:       dwPage.Image(),
 		PlaylistURL: dwPage.PlaylistURL(),
 	})
 	epg.AddChannel("deutsche-welle", "Deutsche Welle (DW)", dwPage.Image())
@@ -60,7 +48,7 @@ func addArd(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 			m3u8.AddChannel(M3U8Channel{
 				ID:          ch.ID,
 				Name:        ch.PublicationService.Name,
-				Image:       imageServiceUrl(page.Image()),
+				Image:       page.Image(),
 				PlaylistURL: page.PlaylistURL(),
 			})
 		}
@@ -77,7 +65,7 @@ func addArd(epg *XmlTvOutput, m3u8 *M3U8Channels) error {
 						slot.Subline,
 						slot.BroadcastedOn,
 						slot.BroadcastEnd,
-						imageServiceUrl(slot.Image()),
+						slot.Image(),
 					)
 				}
 			}

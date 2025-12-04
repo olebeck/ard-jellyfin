@@ -73,7 +73,11 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("http Listening on: %s\n", ln.Addr())
-		go http.Serve(ln, http.FileServer(http.FS(os.DirFS(args.Output))))
+		fileServer := http.FileServer(http.FS(os.DirFS(args.Output)))
+		go http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Printf("%s %s '%s'\n", r.Method, r.URL.Path, r.UserAgent())
+			fileServer.ServeHTTP(w, r)
+		}))
 	}
 
 	os.MkdirAll(args.Output, 0777)
