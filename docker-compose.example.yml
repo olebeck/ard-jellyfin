@@ -2,8 +2,8 @@ services:
   ard-jellyfin:
     image: ghcr.io/olebeck/ard-jellyfin:latest
     environment:
-      - OUTPUT_DIR=/opt/output
-      - LISTEN=:3100
-      - TIMER=3600
+      OUTPUT_DIR: /opt/output
+      LISTEN: :3100
+      TIMER: 3600
     ports:
       - 3100:3100/tcp

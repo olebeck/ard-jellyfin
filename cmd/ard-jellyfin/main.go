@@ -22,10 +22,21 @@ type Args struct {
 }
 
 func parseArgs() (*Args, error) {
-	var args Args
-	args.Output, _ = os.LookupEnv("OUTPUT_DIR")
-	args.Listen, _ = os.LookupEnv("LISTEN")
-	_, args.Debug = os.LookupEnv("DEBUG")
+	var args Args = Args{
+		Output: "output",
+		Listen: "",
+		Debug:  false,
+		Timer:  3600,
+	}
+	if output, ok := os.LookupEnv("OUTPUT_DIR"); ok {
+		args.Output = output
+	}
+	if listen, ok := os.LookupEnv("LISTEN"); ok {
+		args.Listen = listen
+	}
+	if _, ok := os.LookupEnv("DEBUG"); ok {
+		args.Debug = true
+	}
 	if timer, ok := os.LookupEnv("TIMER"); ok {
 		timerI, err := strconv.ParseInt(timer, 0, 32)
 		if err != nil {
@@ -33,11 +44,10 @@ func parseArgs() (*Args, error) {
 		}
 		args.Timer = int(timerI)
 	}
-
-	flag.StringVar(&args.Output, "output", "output", "the output folder")
-	flag.StringVar(&args.Listen, "listen", "", "address to listen with an http server on, if you dont want to serve the files using an external server/directly pass the paths to jellyfin")
-	flag.BoolVar(&args.Debug, "debug", false, "enable debug logs")
-	flag.IntVar(&args.Timer, "timer", 3600, "how long to wait between updates in seconds, 0 if you want it to only run once")
+	flag.StringVar(&args.Output, "output", args.Output, "the output folder")
+	flag.StringVar(&args.Listen, "listen", args.Listen, "address to listen with an http server on, if you dont want to serve the files using an external server/directly pass the paths to jellyfin")
+	flag.BoolVar(&args.Debug, "debug", args.Debug, "enable debug logs")
+	flag.IntVar(&args.Timer, "timer", args.Timer, "how long to wait between updates in seconds, 0 if you want it to only run once")
 	flag.Parse()
 	return &args, nil
 }
@@ -66,7 +76,7 @@ func main() {
 		go http.Serve(ln, http.FileServer(http.FS(os.DirFS(args.Output))))
 	}
 
-	os.Mkdir(args.Output, 0777)
+	os.MkdirAll(args.Output, 0777)
 
 	timerDuration := time.Duration(max(args.Timer, 10)) * time.Second
 	t := time.NewTicker(timerDuration)
